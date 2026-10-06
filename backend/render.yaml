@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: restapi
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: CORS_ALLOWED_ORIGIN
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

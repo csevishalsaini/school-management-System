@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.DS_Store
+__MACOSX/
+*.pem
+*.key
+.gocache/
+binaries/
+obfuscated/
+*.exe
+*.out
