@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"restapi/pkg/utils"
@@ -12,7 +13,9 @@ import (
 )
 
 func JwtMiddleware(next http.Handler) http.Handler {
+	fmt.Println("------------------ JWT Middleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("++++++++++++++++ Inside JWT Middleware")
 		token, err := r.Cookie("Bearer")
 
 		if err != nil {
@@ -38,14 +41,16 @@ func JwtMiddleware(next http.Handler) http.Handler {
 				http.Error(w, "Token Malformed ", http.StatusUnauthorized)
 				return
 			}
-			utils.ErrorHandler(err, "invalid JWT")
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			utils.ErrorHandler(err, "")
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
 		if parsedToken.Valid {
+			fmt.Println("Valid jwt")
 		} else {
 			http.Error(w, "Invalid", http.StatusUnauthorized)
+			log.Println("Invalid jwt", token.Value)
 			return
 		}
 
@@ -60,7 +65,10 @@ func JwtMiddleware(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, utils.ContextKey("username"), claims["user"])
 		ctx = context.WithValue(ctx, utils.ContextKey("userId"), claims["uid"])
 
+		fmt.Println(ctx)
 		next.ServeHTTP(w, r.WithContext(ctx))
+
+		fmt.Println("++++++++++++++++ Sent Response from JWT Middleware")
 	})
 }
 

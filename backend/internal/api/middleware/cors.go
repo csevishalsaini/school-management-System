@@ -7,7 +7,13 @@ import (
 )
 
 var defaultAllowedOrigins = []string{
+	// Production
+	"https://my-project.vercel.app",
+
+	// Local development
+	"http://localhost:3000",
 	"http://localhost:5173",
+	"http://127.0.0.1:5173",
 }
 
 func Cors(next http.Handler) http.Handler {
@@ -25,6 +31,7 @@ func Cors(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Expose-Headers", "Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Max-Age", "3600")
+
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -45,11 +52,7 @@ func isOriginAllowed(origin string) bool {
 }
 
 func allowedOrigins() []string {
-	envOrigins := os.Getenv("CORS_ALLOWED_ORIGIN")
-	if envOrigins == "" {
-		// Keep compatibility with the previous plural setting.
-		envOrigins = os.Getenv("CORS_ALLOWED_ORIGINS")
-	}
+	envOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if envOrigins == "" {
 		return defaultAllowedOrigins
 	}

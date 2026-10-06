@@ -62,3 +62,5 @@ func HashPassword(password string) (string, error) {
 	password = encodeHash
 	return password, nil
 }
+
+

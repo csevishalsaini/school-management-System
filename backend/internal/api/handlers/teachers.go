@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -137,6 +138,7 @@ func AddTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 func UpdateTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
+	fmt.Println(idStr)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		log.Println(err)
@@ -150,6 +152,7 @@ func UpdateTeachersHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		http.Error(w, "Error to Decode json Data ", http.StatusInternalServerError)
 	}
+	fmt.Println(updatedTeacher)
 
 	updatedTeacherFromDb, err := sqlconnect.UpdateTeacher(id, updatedTeacher)
 	if err != nil {

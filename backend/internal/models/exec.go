@@ -19,15 +19,16 @@ type Exec struct {
 
 type UpdatePasswordRequest struct {
 	CurrentPassword string `json:"current_password"`
-	NewPassword     string `json:"new_password"`
+	NewPassword     string	`json:"new_password"`
 }
 
 type UpdatePasswordResponse struct {
-	Token           string `json:"token"`
-	PasswordUpdated bool   `json:"password_updated"`
+	Token       string `json:"token"`
+	PasswordUpdated bool `json:"password_updated"`
 }
 
+
 type Request struct {
-	NewPassword     string `json:"new_password"`
-	ConfirmPassword string `json:"confirm_password"`
-}
+		NewPassword     string `json:"new_password"`
+		ConfirmPassword string `json:"confirm_password"`
+	}

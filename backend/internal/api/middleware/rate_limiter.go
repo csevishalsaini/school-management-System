@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -42,11 +43,14 @@ func (r1 *rateLimiter) Middleware(next http.Handler) http.Handler {
 		count := r1.visitor[ip]
 		r1.mu.Unlock()
 
+		fmt.Printf("Visitor count from %v is %v\n", ip, count)
+
+
 		if count > r1.limit {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
 			w.Write([]byte(`{"error":"Too many requests"}`))
-			return
+			return 
 		}
 
 		next.ServeHTTP(w, r)

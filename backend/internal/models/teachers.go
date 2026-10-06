@@ -8,3 +8,4 @@ type Teacher struct {
 	Class     string `json:"class,omitempty" db:"class,omitempty" validate:"required"`
 	Subject   string `json:"subject,omitempty" db:"subject,omitempty" validate:"required"`
 }
+

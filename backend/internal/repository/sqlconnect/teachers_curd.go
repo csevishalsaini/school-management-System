@@ -19,6 +19,7 @@ func DeleteOneTeacher(id int) error {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 	result, err := db.Exec("DELETE FROM teachers WHERE id = ?", id)
 	if err != nil {
 		// http.Error(w, "Error deleting teacher ", http.StatusInternalServerError)
@@ -44,6 +45,7 @@ func DeleteTeachers(ids []int) ([]int, error) {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return nil, utils.ErrorHandler(err, "Unable to connect Database")
 	}
+	defer db.Close()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -103,6 +105,7 @@ func PatchOneTeacher(id int, updated map[string]interface{}) (models.Teacher, er
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return models.Teacher{}, utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 
 	var existingTeacher models.Teacher
 	err = db.QueryRow(
@@ -164,6 +167,7 @@ func PatchTeachers(updates []map[string]interface{}) error {
 		// http.Error(w, "Unable to connect database", http.StatusInternalServerError)
 		return utils.ErrorHandler(err, "Unable to connect database")
 	}
+	defer db.Close()
 	trx, err := db.Begin()
 
 	if err != nil {
@@ -188,7 +192,7 @@ func PatchTeachers(updates []map[string]interface{}) error {
 
 		var teacher models.Teacher
 		err = trx.QueryRow(
-			`SELECT id, first_name, last_name, email, class, subject
+			`SELECT id, first_name, last_name, email, class, subject 
 			 FROM teachers WHERE id = ?`, id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 
 		if err == sql.ErrNoRows {
@@ -230,8 +234,8 @@ func PatchTeachers(updates []map[string]interface{}) error {
 		}
 
 		_, err = trx.Exec(
-			`UPDATE teachers
-			 SET first_name=?, last_name=?, email=?, class=?, subject=?
+			`UPDATE teachers 
+			 SET first_name=?, last_name=?, email=?, class=?, subject=? 
 			 WHERE id=?`,
 			teacher.FirstName,
 			teacher.LastName,
@@ -299,6 +303,8 @@ func AddTeachersDBHandler(newTeachers []models.Teacher) ([]models.Teacher, error
 		return nil, utils.ErrorHandler(err, "database connect error")
 	}
 
+	defer db.Close()
+
 	// stmt, err := db.Prepare("INSERT INTO teachers (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)")
 	stmt, err := db.Prepare(utils.GenerateInsertQuery("teachers", models.Teacher{}))
 	if err != nil {
@@ -330,6 +336,7 @@ func GetTeacherById(id int) (models.Teacher, error) {
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return models.Teacher{}, utils.ErrorHandler(err, "Error connecting to database")
 	}
+	defer db.Close()
 	var teacher models.Teacher
 	err = db.QueryRow("Select *from teachers where id = ?", id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Subject, &teacher.Class)
 	if err == sql.ErrNoRows {
@@ -349,6 +356,7 @@ func GetTeachersDbOperation(teachers []models.Teacher, r *http.Request, page, li
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return nil, utils.ErrorHandler(err, "Error connecting to database "), 0
 	}
+	defer db.Close()
 
 	var args []interface{}
 	query := "SELECT * FROM teachers WHERE 1=1"
@@ -405,6 +413,7 @@ func GetStudentByTeacherIdDb(teacherID string, students []models.Student) ([]mod
 		log.Println(err)
 		return nil, utils.ErrorHandler(err, "Error retrieving data")
 	}
+	defer db.Close()
 
 	query := "SELECT id, first_name, last_name, email, class FROM students WHERE class = (SELECT class from teachers WHERE id = ?)"
 	rows, err := db.Query(query, teacherID)
@@ -441,6 +450,7 @@ func GetStudentCountByTeacherIddb(id string) (int, error) {
 		return 0, utils.ErrorHandler(err, "Error retrieving data")
 	}
 
+	defer db.Close()
 	var studentCount int
 	query := `SELECT COUNT(*) FROM students where class = (SELECT class FROM teachers where id = ?)`
 	fmt.Println("Came here ")

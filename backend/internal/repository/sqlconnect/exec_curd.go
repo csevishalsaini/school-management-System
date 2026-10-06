@@ -26,6 +26,7 @@ func DeleteOneExec(id int) error {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 	result, err := db.Exec("DELETE FROM execs WHERE id = ?", id)
 	if err != nil {
 		// http.Error(w, "Error deleting exec ", http.StatusInternalServerError)
@@ -51,6 +52,7 @@ func PatchOneExec(id int, updated map[string]interface{}) (models.Exec, error) {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return models.Exec{}, utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 
 	var existingExec models.Exec
 	err = db.QueryRow(
@@ -77,6 +79,7 @@ func PatchOneExec(id int, updated map[string]interface{}) (models.Exec, error) {
 		}
 
 		execVal := reflect.ValueOf(&existingExec).Elem()
+		fmt.Println(execVal, "  ,, ")
 		execType := execVal.Type()
 
 		for k, v := range updated {
@@ -107,6 +110,7 @@ func PatchExecs(updates []map[string]interface{}) error {
 	if err != nil {
 		return utils.ErrorHandler(err, "Unable to connect database")
 	}
+	defer db.Close()
 
 	trx, err := db.Begin()
 	if err != nil {
@@ -184,7 +188,7 @@ func PatchExecs(updates []map[string]interface{}) error {
 
 		// ---- Update DB ----
 		_, err = trx.Exec(
-			`UPDATE execs
+			`UPDATE execs 
 			 SET first_name=?, last_name=?, email=?, username=?
 			 WHERE id=?`,
 			exec.FirstName,
@@ -212,6 +216,7 @@ func AddExecsDBHandler(newExecs []models.Exec) ([]models.Exec, error) {
 	if err != nil {
 		return nil, utils.ErrorHandler(err, "database connect error")
 	}
+	defer db.Close()
 
 	stmt, err := db.Prepare(`
 		INSERT INTO execs
@@ -258,6 +263,7 @@ func GetExecById(id int) (models.Exec, error) {
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return models.Exec{}, utils.ErrorHandler(err, "Error connecting to database")
 	}
+	defer db.Close()
 	var exec models.Exec
 	err = db.QueryRow("Select *from execs where id = ?", id).Scan(&exec.ID, &exec.FirstName, &exec.LastName, &exec.Email, &exec.Username, &exec.InactiveStatus, &exec.Role)
 	if err == sql.ErrNoRows {
@@ -277,6 +283,7 @@ func GetExecsDbOperation(execs []models.Exec, r *http.Request, page, limit int) 
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return nil, utils.ErrorHandler(err, "Error connecting to database "), 0
 	}
+	defer db.Close()
 
 	var args []interface{}
 
@@ -331,6 +338,7 @@ func GetUserByUserName(username string) (*models.Exec, error) {
 	if err != nil {
 		return nil, utils.ErrorHandler(err, "internal error")
 	}
+	defer db.Close()
 
 	user := &models.Exec{}
 	err = db.QueryRow("SELECT id, first_name, last_name, email, username, password, inactive_status, role FROM execs WHERE username = ?", username).Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.Username, &user.Password, &user.InactiveStatus, &user.Role)
@@ -350,6 +358,7 @@ func UpdatePasswordInDb(userId int, w http.ResponseWriter, req models.UpdatePass
 		utils.ErrorHandler(err, "database connection error")
 		return "", err
 	}
+	defer db.Close()
 
 	var username string
 	var userpassword string
@@ -397,6 +406,7 @@ func ForgotPasswordDbHandler(email string) error {
 	if err != nil {
 		return utils.ErrorHandler(err, "Internal Error")
 	}
+	defer db.Close()
 
 	var exec models.Exec
 	err = db.QueryRow("SELECT id FROM execs WHERE email = ?", email).Scan(&exec.ID)
@@ -434,7 +444,8 @@ func ForgotPasswordDbHandler(email string) error {
 	err = sendPasswordResetEmail(email, message)
 	if err != nil {
 		if allowLocalEmailFallback() {
-			log.Printf("password reset email could not be sent; local fallback is enabled")
+			log.Printf("password reset email could not be sent: %v", err)
+			log.Printf("local password reset link for %s: %s", email, resetURL)
 			return nil
 		}
 		return utils.ErrorHandler(err, "Failed to send password reset email")
@@ -496,6 +507,7 @@ func ResetPasswordDbHandler(hashedTokenString string, req models.Request) error 
 		utils.ErrorHandler(err, "Internal Error")
 		return err
 	}
+	defer db.Close()
 
 	var user models.Exec
 	query := "SELECT id, email FROM execs WHERE password_reset_token = ? AND password_token_expires > ?"

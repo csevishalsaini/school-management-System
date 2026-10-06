@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"restapi/pkg/utils"
@@ -14,7 +15,9 @@ import (
 )
 
 func XSSMiddleware(next http.Handler) http.Handler {
+	fmt.Println("****** Intializing XSSMiddleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("++++++++++++ XSSMiddleware Ran")
 
 		// Sanitize the URL Path
 		sanitizedPath, err := clean(r.URL.Path)
@@ -85,14 +88,21 @@ func XSSMiddleware(next http.Handler) http.Handler {
 					}
 
 					r.Body = io.NopCloser(bytes.NewReader(sanitizedBody))
+					fmt.Println("Sanitized body:", string(sanitizedBody))
+				} else {
+					log.Println("Request body is empty")
 				}
+			} else {
+				log.Println("No body in the request")
 			}
 		} else if r.Header.Get("Content-Type") != "" {
+			log.Printf("Received request with unsupported Content-Type: %s. Expected application/json.\n", r.Header.Get("Content-Type"))
 			http.Error(w, "Unsupported Content-Type. Please use application/json.", http.StatusUnsupportedMediaType)
 			return
 		}
 
 		next.ServeHTTP(w, r)
+		fmt.Println("Sending response from XSSMiddleware Ran")
 	})
 }
 

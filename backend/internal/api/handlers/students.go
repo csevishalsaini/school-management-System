@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -18,9 +19,11 @@ func GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	var students []models.Student
 
+	
+
 	page, limit := utils.GetPaginationParam(r)
 
-	students, err, totalStudent := sqlconnect.GetStudentsDbOperation(students, r, page, limit)
+	students, err,totalStudent := sqlconnect.GetStudentsDbOperation(students, r, page, limit)
 	// if shouldReturn {
 	// 	return
 	// }
@@ -46,6 +49,7 @@ func GetStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 
 }
+
 
 func GetOneExecsHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
@@ -139,6 +143,7 @@ func AddStudentsHandler(w http.ResponseWriter, r *http.Request) {
 
 func UpdateStudentsHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
+	fmt.Println(idStr)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		log.Println(err)
@@ -152,6 +157,7 @@ func UpdateStudentsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		http.Error(w, "Error to Decode json Data ", http.StatusInternalServerError)
 	}
+	fmt.Println(updatedStudent)
 
 	updatedStudentFromDb, err := sqlconnect.UpdateStudent(id, updatedStudent)
 	if err != nil {

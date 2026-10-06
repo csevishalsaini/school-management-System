@@ -17,6 +17,7 @@ func DeleteOneStudent(id int) error {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 	result, err := db.Exec("DELETE FROM students WHERE id = ?", id)
 	if err != nil {
 		// http.Error(w, "Error deleting student ", http.StatusInternalServerError)
@@ -42,6 +43,7 @@ func DeleteStudents(ids []int) ([]int, error) {
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return nil, utils.ErrorHandler(err, "Unable to connect Database")
 	}
+	defer db.Close()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -101,6 +103,7 @@ func PatchOneStudent(id int, updated map[string]interface{}) (models.Student, er
 		// http.Error(w, "Unable to connect Databases ", http.StatusInternalServerError)
 		return models.Student{}, utils.ErrorHandler(err, "Unable to connect Databases")
 	}
+	defer db.Close()
 
 	var existingStudent models.Student
 	err = db.QueryRow(
@@ -129,6 +132,7 @@ func PatchOneStudent(id int, updated map[string]interface{}) (models.Student, er
 		}
 
 		studentVal := reflect.ValueOf(&existingStudent).Elem()
+		fmt.Println(studentVal, "  ,, ")
 		studentType := studentVal.Type()
 
 		for k, v := range updated {
@@ -160,6 +164,7 @@ func PatchStudents(updates []map[string]interface{}) error {
 		// http.Error(w, "Unable to connect database", http.StatusInternalServerError)
 		return utils.ErrorHandler(err, "Unable to connect database")
 	}
+	defer db.Close()
 	trx, err := db.Begin()
 
 	if err != nil {
@@ -225,8 +230,8 @@ func PatchStudents(updates []map[string]interface{}) error {
 		}
 
 		_, err = trx.Exec(
-			`UPDATE students
-			 SET first_name=?, last_name=?, email=?, class=?
+			`UPDATE students 
+			 SET first_name=?, last_name=?, email=?, class=? 
 			 WHERE id=?`,
 			student.FirstName,
 			student.LastName,
@@ -292,6 +297,8 @@ func AddStudentsDBHandler(newStudents []models.Student) ([]models.Student, error
 		return nil, utils.ErrorHandler(err, "database connect error")
 	}
 
+	defer db.Close()
+
 	// stmt, err := db.Prepare("INSERT INTO students (first_name, last_name, email, class, subject) VALUES (?,?,?,?,?)")
 	stmt, err := db.Prepare(utils.GenerateInsertQuery("students", models.Student{}))
 	if err != nil {
@@ -303,6 +310,9 @@ func AddStudentsDBHandler(newStudents []models.Student) ([]models.Student, error
 	for i, newStudent := range newStudents {
 		// res, err := stmt.Exec(newStudent.FirstName, newStudent.LastName, newStudent.Email, newStudent.Class, newStudent.Subject)
 		values := utils.GetStructValues(newStudent)
+		for val := range values {
+			fmt.Println(val)
+		}
 		res, err := stmt.Exec(values...)
 		if err != nil {
 			if strings.Contains(err.Error(), "Cannot add or update a child row: a foreign key constraint fails (`school`.`students`, CONSTRAINT `students_ibfk_1` FOREIGN KEY (`class`) REFERENCES `teachers` (`class`))") {
@@ -326,6 +336,7 @@ func GetStudentById(id int) (models.Student, error) {
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return models.Student{}, utils.ErrorHandler(err, "Error connecting to database")
 	}
+	defer db.Close()
 	var student models.Student
 	err = db.QueryRow("Select *from students where id = ?", id).Scan(&student.ID, &student.FirstName, &student.LastName, &student.Email, &student.Class)
 	if err == sql.ErrNoRows {
@@ -345,6 +356,7 @@ func GetStudentsDbOperation(students []models.Student, r *http.Request, page, li
 		// http.Error(w, "Error connecting to database ", http.StatusInternalServerError)
 		return nil, utils.ErrorHandler(err, "Error connecting to database "), 0
 	}
+	defer db.Close()
 
 	var args []interface{}
 	query := "SELECT * FROM students WHERE 1=1"

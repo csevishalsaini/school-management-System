@@ -1,98 +1,99 @@
 package main
 
 import (
-	"context"
-	"errors"
+	"embed"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
-
 	mw "restapi/internal/api/middleware"
 	"restapi/internal/api/router"
-	"restapi/internal/repository/sqlconnect"
 	"restapi/pkg/utils"
 
 	"github.com/joho/godotenv"
 )
 
-func main() {
-	// Load a developer's local .env when present; cloud platforms inject env vars.
-	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Printf("could not load local .env: %v", err)
-	}
-	if strings.TrimSpace(os.Getenv("JWT_SECRET")) == "" {
-		log.Fatal("JWT_SECRET must be set before starting the API")
+//go:embed .env
+var envFile embed.FS
+
+func loadEnvFromEmbeddedFile() {
+	content, err := envFile.ReadFile(".env")
+	if err != nil {
+		log.Fatal("Error reading embedded env file:", err)
 	}
 
-	port := strings.TrimSpace(os.Getenv("PORT"))
-	if port == "" {
-		// Keep compatibility with deployments that used API_PORT.
-		port = strings.TrimSpace(os.Getenv("API_PORT"))
+	tempFile, err := os.CreateTemp("", ".env")
+	if err != nil {
+		log.Fatal("Error creating temp file:", err)
 	}
-	if port == "" {
-		port = "3000"
+
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.Write(content)
+	if err != nil {
+		log.Fatal("Error writing to temp file:", err)
 	}
-	if strings.HasPrefix(port, ":") {
-		port = strings.TrimPrefix(port, ":")
+
+	err = tempFile.Close()
+	if err != nil {
+		log.Fatal("Error closing temp file:", err)
 	}
+
+	err = godotenv.Load(tempFile.Name())
+	if err != nil {
+		log.Fatal("Error loading .env file:", err)
+	}
+}
+
+func main() {
+
+	loadEnvFromEmbeddedFile()
+
+
+
+	port := os.Getenv("API_PORT")
+if port == "" {
+    port = "3000"
+}
+
+	// r1 := mw.NewRateLimiter(5, time.Minute)
+
+	// hppOptions := mw.HPPOptions{
+	// 	CheckQuery:                  true,
+	// 	CheckBody:                   true,
+	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+	// 	Whitelist:                   []string{"name", "sortby", "sortorder"},
+	// }
 
 	mainRouter := router.MainRouter()
+
 	jwtMiddleware := mw.MiddlewareExcludePaths(
 		mw.JwtMiddleware,
-		"/health",
 		"/execs/login",
 		"/execs/signup",
 		"/execs/forgotpassword",
 		"/execs/resetpassword/reset",
 	)
 
-	handler := utils.ApplyMiddlewares(
-		mainRouter,
-		mw.SecurityHeaders,
-		mw.Compression,
-		mw.XSSMiddleware,
-		jwtMiddleware,
-		mw.ResponseTimeMiddleware,
-		mw.Cors,
-	)
+securemux := utils.ApplyMiddlewares(
+	mainRouter,
+	mw.SecurityHeaders,
+	mw.Compression,
+	mw.XSSMiddleware,
+	jwtMiddleware,
+	mw.ResponseTimeMiddleware,
+	mw.Cors, 
+)
 
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      handler,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    port,
+		Handler: securemux,
 	}
 
-	serverErrors := make(chan error, 1)
-	go func() {
-		log.Printf("server started on port %s", port)
-		serverErrors <- server.ListenAndServe()
-	}()
+	fmt.Println("Server is running on port", port)
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case err := <-serverErrors:
-		if !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("server stopped: %v", err)
-		}
-	case sig := <-stop:
-		log.Printf("received %s; shutting down", sig)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("graceful shutdown failed: %v", err)
-			if closeErr := server.Close(); closeErr != nil {
-				log.Printf("server close failed: %v", closeErr)
-			}
-		}
-	}
-	if err := sqlconnect.CloseDb(); err != nil {
-		log.Printf("database pool close failed: %v", err)
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal("Error starting the server:", err)
 	}
 }
